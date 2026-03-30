@@ -1,5 +1,6 @@
 from enum import Enum
 import matplotlib.pyplot as plt
+import csv
 
 
 class AlarmState(str, Enum):
@@ -68,6 +69,34 @@ def display_status(time_step, level, alarm, mode, pump_state, valve_state, inlet
     )
 
 
+def log_data(simulation_data, time_step, level, alarm, mode, pump_state, valve_state, inlet_flow, outlet_flow):
+    simulation_data.append({
+        "time_s": time_step,
+        "level_m": level,
+        "alarm": alarm.value,
+        "mode": mode.value,
+        "pump_state": pump_state,
+        "valve_state": valve_state,
+        "inlet_flow": inlet_flow,
+        "outlet_flow": outlet_flow
+    })
+
+
+def save_to_csv(simulation_data, filename="tank_simulation_data.csv"):
+    if not simulation_data:
+        print("No simulation data to save.")
+        return
+
+    fieldnames = simulation_data[0].keys()
+
+    with open(filename, mode="w", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(simulation_data)
+
+    print(f"Simulation data saved to {filename}")
+
+
 def plot_level_history(time_history, level_history, low_limit, high_limit, low_low_limit, high_high_limit):
     plt.figure(figsize=(10, 5))
     plt.plot(time_history, level_history, marker="o")
@@ -101,6 +130,7 @@ def main():
 
     time_history = []
     level_history = []
+    simulation_data = []
 
     for t in range(simulation_time + 1):
         alarm = trigger_alarm(level, low_low_limit, low_limit, high_limit, high_high_limit)
@@ -112,8 +142,21 @@ def main():
         time_history.append(t)
         level_history.append(level)
 
+        log_data(
+            simulation_data,
+            t,
+            level,
+            alarm,
+            mode,
+            pump_state,
+            valve_state,
+            inlet_flow,
+            outlet_flow
+        )
+
         level = update_level(level, inlet_flow, outlet_flow, dt, tank_height)
 
+    save_to_csv(simulation_data)
     plot_level_history(time_history, level_history, low_limit, high_limit, low_low_limit, high_high_limit)
 
 
